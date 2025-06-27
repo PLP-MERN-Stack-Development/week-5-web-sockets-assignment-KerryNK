@@ -61,7 +61,6 @@ npm start
 
 The server will start on the default port **`http://localhost:5000`** (or whichever is configured in `.env` or `server.js`).
 
-
 ### 🔌 Socket.io Setup
 
 The server initializes a Socket.io instance and listens for key events:
