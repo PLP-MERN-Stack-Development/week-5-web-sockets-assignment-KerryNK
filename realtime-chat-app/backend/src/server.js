@@ -1,34 +1,35 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
-const path = require('path');
+const { Server } = require('socket.io');
+const socketHandler = require('./socket');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
 
-const PORT = process.env.PORT || 5000;
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
 
-// Middleware to serve static files from the frontend build
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+// Middleware to check username on connection (simple auth)
+io.use((socket, next) => {
+  const username = socket.handshake.auth.username;
+  if (!username) {
+    return next(new Error("invalid username"));
+  }
+  socket.username = username;
+  next();
+});
 
-// Socket.io connection
+app.get('/', (req, res) => {
+  res.send('Socket.io Chat Server with Authentication');
+});
+
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-    });
-
-    // Additional socket event handlers can be added here
+  console.log(`User connected: ${socket.username} (ID: ${socket.id})`);
+  socketHandler(io, socket);
 });
 
-// Serve the frontend application
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
-});
-
-// Start the server
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });

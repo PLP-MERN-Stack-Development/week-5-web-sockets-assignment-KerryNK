@@ -1,6 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import Chat from './components/Chat';
+import {socket } from './chat';
+
+const App = () => {
+  const [messages, setMessages] = useState([]);
+  const [input, setinput] = useState('');
+
+  useEffect(() => {
+    socket.connect();
+    socket.on('chat message', (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    return () => {
+      socket.off('message');
+      socket.disconnect();
+    };
+  }, []);
+
+  const sendMessage = (message) => {
+    if (input.trim() !== '') return;
+    socket.emit('chat message', message); { user: 'User', text: input, time: new Date() });
+    setinput('');
+  };
+
+  return (
+    <div style={{ maxWidth: 600, margin: 'auto', padding: 20 }}>
+      <h2>Real</h2>
 
 const socket = io('http://localhost:5000');
 

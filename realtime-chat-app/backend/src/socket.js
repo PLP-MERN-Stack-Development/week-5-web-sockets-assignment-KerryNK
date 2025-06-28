@@ -1,34 +1,44 @@
-// This file manages Socket.io events. It handles user connections, broadcasts chat messages, and manages typing indicators and online/offline status.
+const users = new Map(); // Map username => socket.id
 
-const { Server } = require("socket.io");
+module.exports = (io, socket) => {
+  // Add user to map if not already present
+  if (!users.has(socket.username)) {
+    users.set(socket.username, socket.id);
+    io.emit('users', Array.from(users.keys()));
+  }
 
-const socketHandler = (server) => {
-    const io = new Server(server);
-
-    let users = {};
-
-    io.on("connection", (socket) => {
-        console.log("A user connected: " + socket.id);
-
-        socket.on("join", (username) => {
-            users[socket.id] = username;
-            socket.broadcast.emit("userConnected", username);
-        });
-
-        socket.on("chatMessage", (msg) => {
-            io.emit("chatMessage", { user: users[socket.id], message: msg });
-        });
-
-        socket.on("typing", () => {
-            socket.broadcast.emit("typing", users[socket.id]);
-        });
-
-        socket.on("disconnect", () => {
-            console.log("User disconnected: " + socket.id);
-            socket.broadcast.emit("userDisconnected", users[socket.id]);
-            delete users[socket.id];
-        });
+  // Global chat message
+  socket.on('chat message', (msg) => {
+    io.emit('chat message', {
+      user: socket.username,
+      text: msg,
+      time: new Date(),
     });
+  });
+
+  // Private message: { to: username, text: message }
+  socket.on('private message', ({ to, text }) => {
+    const toSocketId = users.get(to);
+    if (toSocketId) {
+      io.to(toSocketId).emit('private message', {
+        from: socket.username,
+        text,
+        time: new Date(),
+      });
+    }
+  });
+
+  // Typing indicator (global)
+  socket.on('typing', () => {
+    socket.broadcast.emit('typing', socket.username);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    users.delete(socket.username);
+    io.emit('users', Array.from(users.keys()));
+    console.log(`User disconnected: ${socket.username}`);
+  });
 };
 
 module.exports = socketHandler;

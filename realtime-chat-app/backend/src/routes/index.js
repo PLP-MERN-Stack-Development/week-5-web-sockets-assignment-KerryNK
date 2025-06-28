@@ -1,28 +1,40 @@
-// This file defines the API routes for user authentication and chat functionalities. 
-// It exports functions to handle incoming requests related to chat operations.
-
 const express = require('express');
-const router = express.Router();
+const http = require('http');
+const { Server } = require('socket.io');
 
-// Example route for getting chat messages
-router.get('/messages', (req, res) => {
-    // Logic to retrieve chat messages from the database or in-memory store
-    res.json({ messages: [] }); // Placeholder response
+const app = express();
+const server = http.createServer(app); // Use lowercase 'server' for the HTTP server
+
+// Initialize Socket.io server
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Allow all origins for development; adjust in production
+    }
 });
 
-// Example route for sending a chat message
-router.post('/messages', (req, res) => {
-    const { message, user } = req.body;
-    // Logic to save the message to the database or in-memory store
-    res.status(201).json({ message, user }); // Placeholder response
+// Serve a basic route to test server
+app.get('/', (req, res) => {
+    res.send('Socket.io Chat Server is running!');
 });
 
-// Example route for user authentication (if needed)
-router.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    // Logic to authenticate user
-    res.json({ success: true }); // Placeholder response
+// Listen for client connections
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+
+    // Listen for chat messages from clients
+    socket.on('chat message', (msg) => {
+        // Broadcast the message to all connected clients
+        io.emit('chat message', msg);
+    });
+
+    // Handle client disconnection
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
 });
 
-// Export the router
-module.exports = router;
+// Start the server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+});
